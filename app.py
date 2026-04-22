@@ -1,16 +1,25 @@
-import streamlit as st
-from sqlalchemy.engine import make_url
+1. Connection string
+Copy the connection details for your database.
+Details:
+Shared Pooler
+Only use on a IPv4 networkSession pooler connections are IPv4 proxied for free.
+Use Direct Connection if connecting via an IPv6 network.
+host:aws-1-us-east-2.pooler.supabase.com
+port:5432
+database:postgres
+user:postgres.oblpspanwdmuikhhqnns
+Code:
+File: Code
+```
+postgresql://postgres.oblpspanwdmuikhhqnns:[YOUR-PASSWORD]@aws-1-us-east-2.pooler.supabase.com:5432/postgres
+```
 
-st.title("Diagnóstico da conexão")
-
-try:
-    db_url = st.secrets["DB_URL"]
-    parsed = make_url(db_url)
-
-    st.write("Usuário lido:", parsed.username)
-    st.write("Host lido:", parsed.host)
-    st.write("Porta lida:", parsed.port)
-    st.write("Banco lido:", parsed.database)
-
-except Exception as e:
-    st.error(f"Erro ao ler a URL: {e}")
+2. Install Agent Skills (Optional)
+Agent Skills give AI coding tools ready-made instructions, scripts, and resources for working with Supabase more accurately and efficiently.
+Details:
+npx skills add supabase/agent-skills
+Code:
+File: Code
+```
+npx skills add supabase/agent-skills
+```
