@@ -1,15 +1,16 @@
 import streamlit as st
-from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
-st.title("Teste de conexão com banco")
+st.title("Diagnóstico da conexão")
 
 try:
     db_url = st.secrets["DB_URL"]
-    engine = create_engine(db_url)
+    parsed = make_url(db_url)
 
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT 1"))
-        st.success("Conectado com sucesso!")
+    st.write("Usuário lido:", parsed.username)
+    st.write("Host lido:", parsed.host)
+    st.write("Porta lida:", parsed.port)
+    st.write("Banco lido:", parsed.database)
 
 except Exception as e:
-    st.error(f"Erro ao conectar: {e}")
+    st.error(f"Erro ao ler a URL: {e}")
