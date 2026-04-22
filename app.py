@@ -2,10 +2,8 @@ import streamlit as st
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-# Configuração da página para o Iframe do Nimble
 st.set_page_config(page_title="Dashboard Escala Vendas", layout="wide")
 
-# Estilo para remover margens e deixar o dashboard limpo no iFrame
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -13,9 +11,8 @@ st.markdown("""
     header {visibility: hidden;}
     .block-container {padding-top: 1rem; padding-bottom: 0rem;}
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# Conexão Segura
 try:
     db_url = st.secrets["DB_URL"]
     engine = create_engine(db_url)
@@ -23,45 +20,62 @@ except Exception:
     st.error("Erro na conexão com o Banco de Dados. Verifique os Secrets.")
     st.stop()
 
-# Captura o ID do cliente pela URL (?id=nome_do_cliente)
 query_params = st.query_params
-cliente_id = query_params.get("id")
+cliente_slug = query_params.get("id")
 
-if cliente_id:
+if cliente_slug:
     query = text("""
-        SELECT *
-        FROM metricas
-        WHERE cliente_id = :cliente_id
-        ORDER BY data DESC
+        select
+            c.nome as cliente_nome,
+            c.slug as cliente_slug,
+            m.data,
+            m.mensagens_enviadas,
+            m.respostas,
+            m.projeto,
+            m.campanha
+        from metricas m
+        inner join clientes c on c.id = m.cliente_id
+        where c.slug = :cliente_slug
+          and c.ativo = true
+        order by m.data asc
     """)
 
     try:
         with engine.connect() as conn:
-            df = pd.read_sql(query, conn, params={"cliente_id": cliente_id})
+            df = pd.read_sql(query, conn, params={"cliente_slug": cliente_slug})
 
         if not df.empty:
-            st.subheader(f"Performance: {str(cliente_id).upper()}")
+            nome_cliente = str(df["cliente_nome"].iloc[0])
+            st.subheader(f"Performance: {nome_cliente}")
+
+            df["mensagens_enviadas"] = pd.to_numeric(df["mensagens_enviadas"], errors="coerce").fillna(0)
+            df["respostas"] = pd.to_numeric(df["respostas"], errors="coerce").fillna(0)
+            df["data"] = pd.to_datetime(df["data"], errors="coerce")
+            df = df.sort_values("data")
+
+            total_enviadas = int(df["mensagens_enviadas"].sum())
+            total_respostas = int(df["respostas"].sum())
+            taxa_conversao = (total_respostas / total_enviadas * 100) if total_enviadas > 0 else 0
 
             c1, c2, c3 = st.columns(3)
-
-            mensagens_enviadas = pd.to_numeric(df["mensagens_enviadas"], errors="coerce").fillna(0).sum()
-            respostas = pd.to_numeric(df["respostas"], errors="coerce").fillna(0).sum()
-            conv = (respostas / mensagens_enviadas * 100) if mensagens_enviadas > 0 else 0
-
             with c1:
-                st.metric("Enviadas", int(mensagens_enviadas))
+                st.metric("Enviadas", total_enviadas)
             with c2:
-                st.metric("Respostas", int(respostas))
+                st.metric("Respostas", total_respostas)
             with c3:
-                st.metric("Taxa de Conversão", f"{conv:.1f}%")
+                st.metric("Taxa de Conversão", f"{taxa_conversao:.1f}%")
 
-            if "data" in df.columns and "respostas" in df.columns:
-                df["data"] = pd.to_datetime(df["data"], errors="coerce")
-                df = df.sort_values("data")
-                st.line_chart(data=df, x="data", y="respostas")
+            grafico = df[["data", "respostas"]].dropna()
+            if not grafico.empty:
+                st.line_chart(data=grafico, x="data", y="respostas")
+
+            st.dataframe(
+                df[["data", "projeto", "campanha", "mensagens_enviadas", "respostas"]],
+                use_container_width=True
+            )
 
         else:
-            st.info(f"Nenhum dado encontrado para o cliente: {cliente_id}")
+            st.info(f"Nenhum dado encontrado para o cliente: {cliente_slug}")
 
     except Exception as e:
         st.error(f"Erro ao processar dados: {e}")
