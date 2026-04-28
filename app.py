@@ -261,9 +261,11 @@ with c14:
 st.markdown('<div class="section-title">Evolução por período</div>', unsafe_allow_html=True)
 
 grafico = df_filtrado.copy()
-grafico["data"] = pd.to_datetime(grafico["data"], errors="coerce").dt.strftime("%d/%m/%Y")
 
-grafico_diario = grafico.groupby("data", as_index=False)[
+# Mantém a data real para ordenação correta
+grafico["data_ordem"] = pd.to_datetime(grafico["data"], errors="coerce").dt.date
+
+grafico_diario = grafico.groupby("data_ordem", as_index=False)[
     [
         "mensagens_recebidas",
         "respostas",
@@ -273,15 +275,19 @@ grafico_diario = grafico.groupby("data", as_index=False)[
     ]
 ].sum()
 
+# Ordena pela data real
+grafico_diario = grafico_diario.sort_values("data_ordem")
+
+# Cria a data formatada em português apenas para exibição
+grafico_diario["Data"] = pd.to_datetime(grafico_diario["data_ordem"]).dt.strftime("%d/%m/%Y")
+
 grafico_diario = grafico_diario.rename(columns={
-    "data": "Data",
     "mensagens_recebidas": "Mensagens Recebidas",
     "respostas": "Respostas",
     "vendas": "Vendas",
     "atendimentos_ia": "Atendimentos IA",
     "atendimentos_humano": "Atendimentos Humano"
 })
-
 st.line_chart(
     grafico_diario,
     x="Data",
