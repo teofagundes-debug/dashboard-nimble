@@ -9,9 +9,56 @@ st.markdown("""
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
-.block-container {padding-top: 1rem; padding-bottom: 0rem;}
+
+.block-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.kpi-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    margin-bottom: 12px;
+}
+
+.kpi-title {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    color: #111827;
+}
 </style>
 """, unsafe_allow_html=True)
+
+
+def card(title, value):
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">{title}</div>
+        <div class="kpi-value">{value}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def moeda(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 
 db_url = st.secrets["DB_URL"]
 engine = create_engine(db_url)
@@ -77,9 +124,9 @@ for col in numeric_cols:
     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
 nome_cliente = df["cliente_nome"].iloc[0]
-st.subheader(f"Performance: {nome_cliente}")
 
-# Filtros
+st.title(f"Dashboard - {nome_cliente}")
+
 col_f1, col_f2, col_f3 = st.columns(3)
 
 with col_f1:
@@ -104,7 +151,6 @@ if df_filtrado.empty:
     st.info("Nenhum dado encontrado para os filtros selecionados.")
     st.stop()
 
-# Totais
 mensagens_recebidas = int(df_filtrado["mensagens_recebidas"].sum())
 mensagens_enviadas = int(df_filtrado["mensagens_enviadas"].sum())
 respostas = int(df_filtrado["respostas"].sum())
@@ -125,63 +171,122 @@ percentual_ia = (atendimentos_ia / total_atendimentos * 100) if total_atendiment
 percentual_humano = (atendimentos_humano / total_atendimentos * 100) if total_atendimentos > 0 else 0
 ticket_medio = (faturamento / vendas) if vendas > 0 else 0
 
-# KPIs
-st.markdown("### Volume de atendimento")
+
+st.markdown('<div class="section-title">Volume de atendimento</div>', unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Mensagens Recebidas", mensagens_recebidas)
-c2.metric("Mensagens Enviadas", mensagens_enviadas)
-c3.metric("Respostas", respostas)
-c4.metric("Taxa de Resposta", f"{taxa_resposta:.1f}%")
+with c1:
+    card("Mensagens Recebidas", mensagens_recebidas)
+with c2:
+    card("Mensagens Enviadas", mensagens_enviadas)
+with c3:
+    card("Respostas", respostas)
+with c4:
+    card("Taxa de Resposta", f"{taxa_resposta:.1f}%")
 
-st.markdown("### Performance da IA")
-c5, c6, c7 = st.columns(3)
-c5.metric("Atendimentos IA", atendimentos_ia)
-c6.metric("Atendimentos Humano", atendimentos_humano)
-c7.metric("% IA", f"{percentual_ia:.1f}%")
 
-st.markdown("### Qualificação de oportunidades")
-c8, c9, c10 = st.columns(3)
-c8.metric("Quentes", quentes)
-c9.metric("Mornas", mornas)
-c10.metric("Frias", frias)
+st.markdown('<div class="section-title">Performance da IA</div>', unsafe_allow_html=True)
+c5, c6, c7, c8 = st.columns(4)
+with c5:
+    card("Atendimentos IA", atendimentos_ia)
+with c6:
+    card("Atendimentos Humano", atendimentos_humano)
+with c7:
+    card("% IA", f"{percentual_ia:.1f}%")
+with c8:
+    card("% Humano", f"{percentual_humano:.1f}%")
 
-st.markdown("### Vendas")
-c11, c12, c13 = st.columns(3)
-c11.metric("Vendas", vendas)
-c12.metric("Faturamento", f"R$ {faturamento:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-c13.metric("Ticket Médio", f"R$ {ticket_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-# Gráficos
-st.markdown("### Evolução por período")
+st.markdown('<div class="section-title">Qualificação de oportunidades</div>', unsafe_allow_html=True)
+c9, c10, c11 = st.columns(3)
+with c9:
+    card("Quentes", quentes)
+with c10:
+    card("Mornas", mornas)
+with c11:
+    card("Frias", frias)
+
+
+st.markdown('<div class="section-title">Vendas</div>', unsafe_allow_html=True)
+c12, c13, c14 = st.columns(3)
+with c12:
+    card("Vendas", vendas)
+with c13:
+    card("Faturamento", moeda(faturamento))
+with c14:
+    card("Ticket Médio", moeda(ticket_medio))
+
+
+st.markdown('<div class="section-title">Evolução por período</div>', unsafe_allow_html=True)
+
 grafico = df_filtrado.copy()
 grafico["data"] = grafico["data"].dt.date
 
 grafico_diario = grafico.groupby("data", as_index=False)[
-    ["mensagens_recebidas", "respostas", "vendas", "atendimentos_ia", "atendimentos_humano"]
-].sum()
-
-st.line_chart(grafico_diario, x="data", y=["mensagens_recebidas", "respostas", "vendas"])
-
-st.markdown("### Atendimento IA x Humano")
-st.bar_chart(grafico_diario, x="data", y=["atendimentos_ia", "atendimentos_humano"])
-
-# Tabela
-st.markdown("### Detalhamento")
-st.dataframe(
-    df_filtrado[[
-        "data",
-        "vendedor",
-        "projeto",
-        "campanha",
+    [
         "mensagens_recebidas",
         "respostas",
-        "oportunidades_quentes",
-        "oportunidades_mornas",
-        "oportunidades_frias",
         "vendas",
-        "faturamento",
         "atendimentos_ia",
         "atendimentos_humano"
-    ]],
-    use_container_width=True
+    ]
+].sum()
+
+grafico_diario = grafico_diario.rename(columns={
+    "data": "Data",
+    "mensagens_recebidas": "Mensagens Recebidas",
+    "respostas": "Respostas",
+    "vendas": "Vendas",
+    "atendimentos_ia": "Atendimentos IA",
+    "atendimentos_humano": "Atendimentos Humano"
+})
+
+st.line_chart(
+    grafico_diario,
+    x="Data",
+    y=["Mensagens Recebidas", "Respostas", "Vendas"]
 )
+
+st.markdown('<div class="section-title">Atendimento IA x Humano</div>', unsafe_allow_html=True)
+
+st.bar_chart(
+    grafico_diario,
+    x="Data",
+    y=["Atendimentos IA", "Atendimentos Humano"]
+)
+
+
+st.markdown('<div class="section-title">Detalhamento</div>', unsafe_allow_html=True)
+
+tabela = df_filtrado[[
+    "data",
+    "vendedor",
+    "projeto",
+    "campanha",
+    "mensagens_recebidas",
+    "respostas",
+    "oportunidades_quentes",
+    "oportunidades_mornas",
+    "oportunidades_frias",
+    "vendas",
+    "faturamento",
+    "atendimentos_ia",
+    "atendimentos_humano"
+]].copy()
+
+tabela = tabela.rename(columns={
+    "data": "Data",
+    "vendedor": "Vendedor",
+    "projeto": "Projeto",
+    "campanha": "Campanha",
+    "mensagens_recebidas": "Mensagens Recebidas",
+    "respostas": "Respostas",
+    "oportunidades_quentes": "Oportunidades Quentes",
+    "oportunidades_mornas": "Oportunidades Mornas",
+    "oportunidades_frias": "Oportunidades Frias",
+    "vendas": "Vendas",
+    "faturamento": "Faturamento",
+    "atendimentos_ia": "Atendimentos IA",
+    "atendimentos_humano": "Atendimentos Humano"
+})
+
+st.dataframe(tabela, use_container_width=True)
