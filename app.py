@@ -261,7 +261,7 @@ with c14:
 st.markdown('<div class="section-title">Evolução por período</div>', unsafe_allow_html=True)
 
 grafico = df_filtrado.copy()
-grafico["data"] = grafico["data"].dt.date
+grafico["data"] = pd.to_datetime(grafico["data"], errors="coerce").dt.strftime("%d/%m/%Y")
 
 grafico_diario = grafico.groupby("data", as_index=False)[
     [
