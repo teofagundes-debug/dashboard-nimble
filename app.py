@@ -21,6 +21,18 @@ header {visibility: hidden;}
     box-shadow: 0 4px 14px rgba(0,0,0,0.10);
     margin-bottom: 12px;
     min-height: 105px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+
+    transition: transform 0.2s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-3px);
 }
 
 .kpi-card.blue {
@@ -46,13 +58,15 @@ header {visibility: hidden;}
 .kpi-title {
     font-size: 14px;
     color: #e5e7eb;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    text-align: center;
 }
 
 .kpi-value {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 700;
     color: #ffffff;
+    text-align: center;
 }
 
 .section-title {
