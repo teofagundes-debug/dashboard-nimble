@@ -165,7 +165,9 @@ numeric_cols = [
 
 for col in numeric_cols:
     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+from datetime import datetime
 
+competencia_atual = datetime.now().strftime("%Y-%m")
 
 nome_cliente = df["cliente_nome"].iloc[0]
 
