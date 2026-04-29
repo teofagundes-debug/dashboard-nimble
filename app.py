@@ -131,6 +131,7 @@ query = text("""
     inner join clientes c on c.id = m.cliente_id
     where c.slug = :cliente_slug
       and c.ativo = true
+      and m.competencia = :competencia_atual
     order by m.data asc
 """)
 
