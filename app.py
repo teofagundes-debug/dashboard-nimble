@@ -138,7 +138,14 @@ query = text("""
 
 try:
     with engine.connect() as conn:
-        df = pd.read_sql(query, conn, params={"cliente_slug": cliente_slug})
+        df = pd.read_sql(
+    query,
+    conn,
+    params={
+        "cliente_slug": cliente_slug,
+        "competencia_atual": competencia_atual
+    }
+)
 except Exception as e:
     st.error(f"Erro ao carregar dados: {e}")
     st.stop()
