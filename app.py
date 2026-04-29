@@ -64,6 +64,17 @@ header {visibility: hidden;}
     margin-bottom: 12px;
     color: #111827;
 }
+
+.insight-box {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 14px;
+    padding: 14px 18px;
+    color: #14532d;
+    font-size: 15px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -81,7 +92,6 @@ def moeda(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-# Conexão
 try:
     db_url = st.secrets["DB_URL"]
     engine = create_engine(db_url)
@@ -188,6 +198,11 @@ percentual_ia = (atendimentos_ia / total_atendimentos * 100) if total_atendiment
 percentual_humano = (atendimentos_humano / total_atendimentos * 100) if total_atendimentos else 0
 ticket_medio = (faturamento / vendas) if vendas else 0
 
+# Eficiência da IA
+tempo_medio_atendimento_min = 4
+minutos_economizados = atendimentos_ia * tempo_medio_atendimento_min
+horas_economizadas = minutos_economizados / 60
+
 
 # Cards - Volume
 st.markdown('<div class="section-title">Volume de atendimento</div>', unsafe_allow_html=True)
@@ -205,18 +220,27 @@ with c4:
 
 
 # Cards - IA
-st.markdown('<div class="section-title">Performance da IA</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Eficiência da IA</div>', unsafe_allow_html=True)
 
 c5, c6, c7, c8 = st.columns(4)
 
 with c5:
     card("Atendimentos IA", atendimentos_ia, "purple")
 with c6:
-    card("Atendimentos Humano", atendimentos_humano, "gray")
+    card("% Atendido por IA", f"{percentual_ia:.1f}%", "purple")
 with c7:
-    card("% IA", f"{percentual_ia:.1f}%", "purple")
+    card("Horas Economizadas", f"{horas_economizadas:.1f}h", "green")
 with c8:
-    card("% Humano", f"{percentual_humano:.1f}%", "gray")
+    card("Atendimentos Humano", atendimentos_humano, "gray")
+
+st.markdown(f"""
+<div class="insight-box">
+    A IA realizou <strong>{percentual_ia:.1f}%</strong> dos atendimentos no período,
+    economizando aproximadamente <strong>{horas_economizadas:.1f} horas</strong>
+    de trabalho humano, considerando uma média conservadora de
+    <strong>{tempo_medio_atendimento_min} minutos</strong> por atendimento.
+</div>
+""", unsafe_allow_html=True)
 
 
 # Cards - Oportunidades
