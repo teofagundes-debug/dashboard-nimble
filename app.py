@@ -5,7 +5,6 @@ from datetime import datetime
 
 st.set_page_config(page_title="Dashboard Escala Vendas", layout="wide")
 
-# Competência atual (MÊS ATUAL)
 competencia_atual = datetime.now().strftime("%Y-%m")
 
 st.markdown("""
@@ -20,6 +19,7 @@ header {visibility: hidden;}
 }
 
 .kpi-card {
+    width: 100%;
     border-radius: 16px;
     padding: 18px;
     box-shadow: 0 4px 14px rgba(0,0,0,0.10);
@@ -82,8 +82,13 @@ def moeda(valor):
 
 
 # Conexão
-db_url = st.secrets["DB_URL"]
-engine = create_engine(db_url)
+try:
+    db_url = st.secrets["DB_URL"]
+    engine = create_engine(db_url)
+except Exception:
+    st.error("Erro na conexão com o Banco de Dados. Verifique os Secrets.")
+    st.stop()
+
 
 cliente_slug = st.query_params.get("id")
 
@@ -92,7 +97,6 @@ if not cliente_slug:
     st.stop()
 
 
-# QUERY (AGORA FILTRANDO POR MÊS)
 query = text("""
     select
         c.nome as cliente_nome,
@@ -117,6 +121,7 @@ query = text("""
       and m.competencia = :competencia_atual
 """)
 
+
 try:
     with engine.connect() as conn:
         df = pd.read_sql(
@@ -133,7 +138,7 @@ except Exception as e:
 
 
 if df.empty:
-    st.info(f"Nenhum dado encontrado para o mês atual.")
+    st.info("Nenhum dado encontrado para o mês atual.")
     st.stop()
 
 
@@ -157,13 +162,12 @@ for col in numeric_cols:
 
 
 nome_cliente = df["cliente_nome"].iloc[0]
-
-# Título com mês
 mes_formatado = datetime.now().strftime("%B/%Y").capitalize()
+
 st.title(f"{nome_cliente} — {mes_formatado}")
 
 
-# TOTAIS DO MÊS
+# Totais
 mensagens_recebidas = int(df["mensagens_recebidas"].sum())
 mensagens_enviadas = int(df["mensagens_enviadas"].sum())
 respostas = int(df["respostas"].sum())
@@ -177,60 +181,157 @@ faturamento = float(df["faturamento"].sum())
 
 atendimentos_ia = int(df["atendimentos_ia"].sum())
 atendimentos_humano = int(df["atendimentos_humano"].sum())
-
 total_atendimentos = atendimentos_ia + atendimentos_humano
 
 taxa_resposta = (respostas / mensagens_recebidas * 100) if mensagens_recebidas else 0
 percentual_ia = (atendimentos_ia / total_atendimentos * 100) if total_atendimentos else 0
+percentual_humano = (atendimentos_humano / total_atendimentos * 100) if total_atendimentos else 0
 ticket_medio = (faturamento / vendas) if vendas else 0
 
 
-# CARDS
-st.markdown('<div class="section-title">Volume</div>', unsafe_allow_html=True)
+# Cards - Volume
+st.markdown('<div class="section-title">Volume de atendimento</div>', unsafe_allow_html=True)
+
 c1, c2, c3, c4 = st.columns(4)
-c1.markdown(card("Recebidas", mensagens_recebidas, "blue"))
-c2.markdown(card("Enviadas", mensagens_enviadas, "blue"))
-c3.markdown(card("Respostas", respostas, "green"))
-c4.markdown(card("Taxa", f"{taxa_resposta:.1f}%", "green"))
 
-st.markdown('<div class="section-title">IA</div>', unsafe_allow_html=True)
-c5, c6, c7 = st.columns(3)
-c5.markdown(card("IA", atendimentos_ia, "purple"))
-c6.markdown(card("Humano", atendimentos_humano, "gray"))
-c7.markdown(card("% IA", f"{percentual_ia:.1f}%", "purple"))
+with c1:
+    card("Recebidas", mensagens_recebidas, "blue")
+with c2:
+    card("Enviadas", mensagens_enviadas, "blue")
+with c3:
+    card("Respostas", respostas, "green")
+with c4:
+    card("Taxa de Resposta", f"{taxa_resposta:.1f}%", "green")
 
-st.markdown('<div class="section-title">Oportunidades</div>', unsafe_allow_html=True)
-c8, c9, c10 = st.columns(3)
-c8.markdown(card("Quentes", quentes, "orange"))
-c9.markdown(card("Mornas", mornas, "blue"))
-c10.markdown(card("Frias", frias, "gray"))
 
+# Cards - IA
+st.markdown('<div class="section-title">Performance da IA</div>', unsafe_allow_html=True)
+
+c5, c6, c7, c8 = st.columns(4)
+
+with c5:
+    card("Atendimentos IA", atendimentos_ia, "purple")
+with c6:
+    card("Atendimentos Humano", atendimentos_humano, "gray")
+with c7:
+    card("% IA", f"{percentual_ia:.1f}%", "purple")
+with c8:
+    card("% Humano", f"{percentual_humano:.1f}%", "gray")
+
+
+# Cards - Oportunidades
+st.markdown('<div class="section-title">Qualificação de oportunidades</div>', unsafe_allow_html=True)
+
+c9, c10, c11 = st.columns(3)
+
+with c9:
+    card("Quentes", quentes, "orange")
+with c10:
+    card("Mornas", mornas, "blue")
+with c11:
+    card("Frias", frias, "gray")
+
+
+# Cards - Vendas
 st.markdown('<div class="section-title">Vendas</div>', unsafe_allow_html=True)
-c11, c12, c13 = st.columns(3)
-c11.markdown(card("Vendas", vendas, "green"))
-c12.markdown(card("Faturamento", moeda(faturamento), "green"))
-c13.markdown(card("Ticket", moeda(ticket_medio), "purple"))
+
+c12, c13, c14 = st.columns(3)
+
+with c12:
+    card("Vendas", vendas, "green")
+with c13:
+    card("Faturamento", moeda(faturamento), "green")
+with c14:
+    card("Ticket Médio", moeda(ticket_medio), "purple")
 
 
-# GRÁFICO
-st.markdown('<div class="section-title">Evolução</div>', unsafe_allow_html=True)
+# Gráfico - Evolução
+st.markdown('<div class="section-title">Evolução do mês</div>', unsafe_allow_html=True)
 
 grafico = df.copy()
-grafico["Data"] = grafico["data"].dt.strftime("%d/%m/%Y")
+grafico["data_ordem"] = pd.to_datetime(grafico["data"], errors="coerce").dt.date
 
-grafico = grafico.groupby("Data", as_index=False)[
+grafico_diario = grafico.groupby("data_ordem", as_index=False)[
     ["mensagens_recebidas", "respostas", "vendas"]
 ].sum()
 
-st.line_chart(grafico.set_index("Data"))
+grafico_diario = grafico_diario.sort_values("data_ordem")
+grafico_diario["Data"] = pd.to_datetime(grafico_diario["data_ordem"]).dt.strftime("%d/%m/%Y")
+
+grafico_diario = grafico_diario.rename(columns={
+    "mensagens_recebidas": "Mensagens Recebidas",
+    "respostas": "Respostas",
+    "vendas": "Vendas"
+})
+
+st.line_chart(
+    grafico_diario,
+    x="Data",
+    y=["Mensagens Recebidas", "Respostas", "Vendas"]
+)
 
 
-# TABELA
+# Gráfico - IA x Humano
+st.markdown('<div class="section-title">Atendimento IA x Humano</div>', unsafe_allow_html=True)
+
+grafico_ia = df.copy()
+grafico_ia["data_ordem"] = pd.to_datetime(grafico_ia["data"], errors="coerce").dt.date
+
+grafico_ia = grafico_ia.groupby("data_ordem", as_index=False)[
+    ["atendimentos_ia", "atendimentos_humano"]
+].sum()
+
+grafico_ia = grafico_ia.sort_values("data_ordem")
+grafico_ia["Data"] = pd.to_datetime(grafico_ia["data_ordem"]).dt.strftime("%d/%m/%Y")
+
+grafico_ia = grafico_ia.rename(columns={
+    "atendimentos_ia": "Atendimentos IA",
+    "atendimentos_humano": "Atendimentos Humano"
+})
+
+st.bar_chart(
+    grafico_ia,
+    x="Data",
+    y=["Atendimentos IA", "Atendimentos Humano"]
+)
+
+
+# Tabela
 st.markdown('<div class="section-title">Detalhamento</div>', unsafe_allow_html=True)
 
-tabela = df.copy()
+tabela = df[[
+    "data",
+    "vendedor",
+    "projeto",
+    "campanha",
+    "mensagens_recebidas",
+    "respostas",
+    "oportunidades_quentes",
+    "oportunidades_mornas",
+    "oportunidades_frias",
+    "vendas",
+    "faturamento",
+    "atendimentos_ia",
+    "atendimentos_humano"
+]].copy()
 
-tabela["data"] = tabela["data"].dt.strftime("%d/%m/%Y")
-tabela["faturamento"] = tabela["faturamento"].apply(moeda)
+tabela = tabela.rename(columns={
+    "data": "Data",
+    "vendedor": "Vendedor",
+    "projeto": "Projeto",
+    "campanha": "Campanha",
+    "mensagens_recebidas": "Mensagens Recebidas",
+    "respostas": "Respostas",
+    "oportunidades_quentes": "Oportunidades Quentes",
+    "oportunidades_mornas": "Oportunidades Mornas",
+    "oportunidades_frias": "Oportunidades Frias",
+    "vendas": "Vendas",
+    "faturamento": "Faturamento",
+    "atendimentos_ia": "Atendimentos IA",
+    "atendimentos_humano": "Atendimentos Humano"
+})
+
+tabela["Data"] = pd.to_datetime(tabela["Data"], errors="coerce").dt.strftime("%d/%m/%Y")
+tabela["Faturamento"] = tabela["Faturamento"].apply(moeda)
 
 st.dataframe(tabela, use_container_width=True)
